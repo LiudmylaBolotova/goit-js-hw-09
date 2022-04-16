@@ -1,7 +1,14 @@
 import flatpickr from 'flatpickr';
 import 'flatpickr/dist/flatpickr.min.css';
 
-import { Notify } from 'notiflix/build/notiflix-notify-aio';
+import Notiflix from 'notiflix';
+
+const input = document.querySelector('#datetime-picker');
+const btnStart = document.querySelector('[data-start]');
+const day = document.querySelector('[data-days]');
+const hour = document.querySelector('[data-hours]');
+const minute = document.querySelector('[data-minutes]');
+const second = document.querySelector('[data-seconds]');
 
 const options = {
   enableTime: true,
@@ -9,47 +16,58 @@ const options = {
   defaultDate: new Date(),
   minuteIncrement: 1,
   onClose(selectedDates) {
-    onCloseFunction(selectedDates[0]);
+    if (new Date() - selectedDates[0] > 0) {
+      btnStart.setAttribute('disabled', true);
+      Notiflix.Notify.warning('Please choose a date in the future');
+      //alert('Please choose a date in the future');
+    } else {
+      btnStart.removeAttribute('disabled', true);
+      selectedDate = selectedDates[0];
+    }
   },
 };
 
-const refs = {
-  startButton: document.querySelector('[data-start]'),
-  inputEl: document.querySelector('#datetime-picker'),
-  days: document.querySelector('[data-days]'),
-  hours: document.querySelector('[data-hours]'),
-  minutes: document.querySelector('[data-minutes]'),
-  seconds: document.querySelector('[data-seconds]'),
-};
-const isDisabled = true;
-let chosenDate = Date.now();
+let selectedDate = null;
+let timerId = null;
 
-refs.startButton.disabled = isDisabled;
-refs.startButton.addEventListener('click', onStartClick);
+flatpickr(input, options);
 
-const fp = flatpickr(refs.inputEl, options);
+btnStart.setAttribute('disabled', true);
+btnStart.addEventListener('click', startTimer);
 
-function onCloseFunction(date) {
-  if (Date.now() > date) {
-    Notify.failure('Please choose a date in the future');
-  } else {
-    refs.startButton.disabled = !isDisabled;
-    chosenDate = date;
-  }
-}
-
-function onStartClick() {
-  refs.startButton.disabled = isDisabled;
-  fp.destroy();
-  refs.inputEl.disabled = isDisabled;
-  calculationStart();
-}
-
-function calculationStart() {
-  setInterval(() => {
-    const restTime = convertMs(chosenDate - Date.now());
-    markupChange(restTime);
+function startTimer() {
+  timerId = setInterval(() => {
+    timerСheck();
   }, 1000);
+  btnStart.setAttribute('disabled', true);
+  Notiflix.Notify.success('Start timer');
+}
+
+function stopTimer() {
+  Notiflix.Notify.info('Time is over', {
+    timeout: 6000,
+  });
+  btnStart.removeAttribute('disabled', true);
+  clearInterval(timerId);
+}
+
+function timerСheck() {
+  if (selectedDate <= new Date()) {
+    stopTimer();
+    return;
+  }
+  updateTimerInterfece(convertMs(selectedDate - new Date()));
+}
+
+function pad(value) {
+  return String(value).padStart(2, '0');
+}
+
+function updateTimerInterfece({ days, hours, minutes, seconds }) {
+  day.textContent = `${pad(days)}`;
+  hour.textContent = `${pad(hours)}`;
+  minute.textContent = `${pad(minutes)}`;
+  second.textContent = `${pad(seconds)}`;
 }
 
 function convertMs(ms) {
@@ -69,15 +87,4 @@ function convertMs(ms) {
   const seconds = Math.floor((((ms % day) % hour) % minute) / second);
 
   return { days, hours, minutes, seconds };
-}
-
-function markupChange({ days, hours, minutes, seconds }) {
-  refs.days.textContent = addLeadingZero(days);
-  refs.hours.textContent = addLeadingZero(hours);
-  refs.minutes.textContent = addLeadingZero(minutes);
-  refs.seconds.textContent = addLeadingZero(seconds);
-}
-
-function addLeadingZero(value) {
-  return String(value).padStart(2, '0');
 }
